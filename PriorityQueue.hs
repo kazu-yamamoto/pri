@@ -110,11 +110,8 @@ dequeue Queue{..} = do
     let !offset' = offidx
         !bits' = shiftR bits idx
     writeIORef offsetRef offset'
-    if RTQ.null q then do
-        let !bits'' = clearBit bits' 0
-        writeIORef bitsRef bits''
-      else
-        writeIORef bitsRef bits'
+    let !bits'' = if RTQ.null q then clearBit bits' 0 else bits'
+    writeIORef bitsRef bits''
     --
     return ent
 
