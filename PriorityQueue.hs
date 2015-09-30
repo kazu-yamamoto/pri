@@ -38,20 +38,20 @@ data Queue a = Queue {
 bitWidth :: Int
 bitWidth = 64
 
+----------------------------------------------------------------
+
 deficitSteps :: Int
 deficitSteps = 65536
 
-----------------------------------------------------------------
-
-offsetList :: [Int]
-offsetList = map calc idxs ++ [0]
+deficitList :: [Int]
+deficitList = map calc idxs
   where
     idxs :: [Double]
     idxs = [1..256]
     calc x = round (2**(8 - logBase 2 x) * 16128)
 
-offsetTable :: Array Int Int
-offsetTable = listArray (0,256) offsetList
+deficitTable :: Array Int Int
+deficitTable = listArray (1,256) deficitList
 
 ----------------------------------------------------------------
 
@@ -80,7 +80,7 @@ enqueue :: Queue a -> Entry a -> IO ()
 enqueue Queue{..} Entry{..} = do
     bits <- readIORef bitsRef
     offset <- readIORef offsetRef
-    let !off' = offsetTable ! (weight - 1) + deficit
+    let !off' = deficitTable ! weight + deficit
         !deficit' = off' `mod` deficitSteps
         !off      = off' `div` deficitSteps
         !n = bitWidth - 1 - off
@@ -88,6 +88,7 @@ enqueue Queue{..} Entry{..} = do
     writeIORef bitsRef bits'
     let !idx = (offset + off) `mod` bitWidth
         !ent = Entry weight deficit' item
+    print (weight,off,deficit')
     q <- RTQ.enqueue ent <$> readArray anchors idx
     writeArray anchors idx q
 
@@ -123,6 +124,6 @@ go :: Int -> Queue String -> IO ()
 go  0 _ = return ()
 go !n q = do
     x <- dequeue q
-    print x
+    putStrLn $ "deQ: " ++ show x
     enqueue q x
     go (n - 1) q
