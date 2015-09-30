@@ -7,7 +7,6 @@
 
 module H2O where
 
-import Control.Monad (when)
 import Data.Array (Array, listArray, (!))
 import Data.Array.IO (IOArray, newArray, readArray, writeArray)
 import Data.Bits (setBit, clearBit, shiftL)
@@ -82,14 +81,13 @@ enqueue Queue{..} Entry{..} = do
     let !off' = offsetTable ! (weight - 1) + deficit
         !deficit' = off' `mod` deficitSteps
         !off      = off' `div` deficitSteps
-        !ent = Entry weight deficit' item
         !n = bitWidth - 1 - off
         !bits' = setBit bits n
-        !idx = (offset + off) `mod` bitWidth
     writeIORef bitsRef bits'
-    q <- readArray anchors idx
-    let !q' = ent <| q
-    writeArray anchors idx q'
+    let !idx = (offset + off) `mod` bitWidth
+        !ent = Entry weight deficit' item
+    q <- (ent <|) <$> readArray anchors idx
+    writeArray anchors idx q
 
 -- | Dequeuing an entry. Queue is updated.
 dequeue :: Queue a -> IO (Entry a)
@@ -98,15 +96,15 @@ dequeue Queue{..} = do
     offset <- readIORef offsetRef
     let !zeroes = countLeadingZero64 bits
         !bits' = shiftL bits zeroes
-    writeIORef bitsRef bits'
-    let !off = (offset + zeroes) `mod` bitWidth
-    writeIORef offsetRef off
-    q <- readArray anchors off
-    let q' :> ent = S.viewr q
-    writeArray anchors off q'
-    when (S.null q') $ do
+        !off = (offset + zeroes) `mod` bitWidth
+    q :> ent <- S.viewr <$> readArray anchors off
+    if S.null q then do
         let !bits'' = clearBit bits' (bitWidth - 1)
         writeIORef bitsRef bits''
+      else
+        writeIORef bitsRef bits'
+    writeIORef offsetRef off
+    writeArray anchors off q
     return ent
 
 ----------------------------------------------------------------
