@@ -79,12 +79,18 @@ dequeue Queue{..} = do
         writeIORef bitsRef $ clearBit bits' 63
     return ent
 
-go :: IO ()
-go = do
+main :: IO ()
+main = do
     q <- new :: IO (Queue String)
     enqueue (Entry 201 0 "a") q
     enqueue (Entry 101 0 "b") q
     enqueue (Entry 1 0 "c") q
-    dequeue q >>= print
-    dequeue q >>= print
-    dequeue q >>= print
+    go 1000 q
+
+go :: Int -> Queue String -> IO ()
+go 0 _ = return ()
+go n q = do
+    x <- dequeue q
+    print x
+    enqueue x q
+    go (n - 1) q
