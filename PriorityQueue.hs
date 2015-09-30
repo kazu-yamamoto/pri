@@ -77,19 +77,18 @@ new = Queue <$> newIORef 0 <*> newIORef 0 <*> newArray (0, bitWidth - 1) RTQ.emp
 
 -- | Enqueuing an entry. Queue is updated.
 enqueue :: Queue a -> Entry a -> IO ()
-enqueue Queue{..} Entry{..} = do
+enqueue Queue{..} ent = do
     bits <- readIORef bitsRef
     offset <- readIORef offsetRef
-    let !off' = deficitTable ! weight + deficit
-        !deficit' = off' `mod` deficitSteps
-        !off      = off' `div` deficitSteps
+    let !total = deficitTable ! weight ent + deficit ent
+        !deficit' = total `mod` deficitSteps
+        !off      = total `div` deficitSteps
         !n = bitWidth - 1 - off
         !bits' = setBit bits n
     writeIORef bitsRef bits'
     let !idx = (offset + off) `mod` bitWidth
-        !ent = Entry weight deficit' item
-    print (weight,off,deficit')
-    q <- RTQ.enqueue ent <$> readArray anchors idx
+        !ent' = ent { deficit = deficit' }
+    q <- RTQ.enqueue ent' <$> readArray anchors idx
     writeArray anchors idx q
 
 -- | Dequeuing an entry. Queue is updated.
@@ -124,6 +123,6 @@ go :: Int -> Queue String -> IO ()
 go  0 _ = return ()
 go !n q = do
     x <- dequeue q
-    putStrLn $ "deQ: " ++ show x
+    print x
     enqueue q x
     go (n - 1) q
