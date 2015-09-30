@@ -88,7 +88,7 @@ enqueue Queue{..} Entry{..} = do
         !idx = (offset + off) `mod` bitWidth
     writeIORef bitsRef bits'
     q <- readArray anchors idx
-    let q' = ent <| q
+    let !q' = ent <| q
     writeArray anchors idx q'
 
 -- | Dequeuing an entry. Queue is updated.
