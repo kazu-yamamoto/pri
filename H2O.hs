@@ -2,7 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE BangPatterns #-}
 
--- https://en.wikipedia.org/wiki/Find_first_set
+-- Haskell implementation of H2O's priority queue.
 -- https://github.com/h2o/h2o/blob/master/lib/http2/scheduler.c
 
 module H2O where
@@ -54,6 +54,7 @@ offsetTable = listArray (0,256) offsetList
 
 ----------------------------------------------------------------
 
+-- https://en.wikipedia.org/wiki/Find_first_set
 foreign import ccall unsafe "strings.h flsll"
     c_fls :: CLLong -> CLLong
 
