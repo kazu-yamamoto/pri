@@ -1,6 +1,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 -- Haskell implementation of H2O's priority queue.
 -- https://github.com/h2o/h2o/blob/master/lib/http2/scheduler.c
@@ -85,17 +86,19 @@ new = Queue <$> newIORef 0 <*> newIORef 0 <*> newArray (0, bitWidth - 1) RTQ.emp
 -- | Enqueuing an entry. Queue is updated.
 enqueue :: Queue a -> Entry a -> IO ()
 enqueue Queue{..} ent = do
-    bits <- readIORef bitsRef
     offset <- readIORef offsetRef
     let !total = deficitTable ! weight ent + deficit ent
         !deficit' = total `mod` deficitSteps
         !idx      = total `div` deficitSteps
-        !bits' = setBit bits idx
-    writeIORef bitsRef bits'
-    let !offidx = relativeIndex offset idx
+        !offidx = relativeIndex offset idx
         !ent' = ent { deficit = deficit' }
-    q <- RTQ.enqueue ent' <$> readArray anchors offidx
-    writeArray anchors offidx q
+    updateArray anchors offidx $ \q -> ((), RTQ.enqueue ent' q)
+    updateBits idx
+  where
+    updateBits idx = do
+        bits <- readIORef bitsRef
+        let !bits' = setBit bits idx
+        writeIORef bitsRef bits'
 
 -- | Dequeuing an entry. Queue is updated.
 dequeue :: Queue a -> IO (Entry a)
@@ -104,16 +107,24 @@ dequeue Queue{..} = do
     offset <- readIORef offsetRef
     let !idx = firstBitSet bits
         !offidx = relativeIndex offset idx
-    (ent,q) <- RTQ.dequeue <$> readArray anchors offidx
-    writeArray anchors offidx q
-    --
-    let !offset' = offidx
-        !bits' = shiftR bits idx
-    writeIORef offsetRef offset'
-    let !bits'' = if RTQ.null q then clearBit bits' 0 else bits'
-    writeIORef bitsRef bits''
-    --
+    ent <- updateArray anchors offidx RTQ.dequeue
+    updateOffset offidx
+    checkEmpty offidx >>= updateBits bits idx
     return ent
+  where
+    checkEmpty offidx = RTQ.null <$> readArray anchors offidx
+    updateOffset offset' = writeIORef offsetRef offset'
+    updateBits bits idx isEmpty = writeIORef bitsRef bits''
+      where
+        !bits' = shiftR bits idx
+        !bits'' = if isEmpty then clearBit bits' 0 else bits'
+
+updateArray :: IOArray Int a -> Int -> (a -> (b,a)) -> IO b
+updateArray arr idx f = do
+    x <- readArray arr idx
+    let (r,x') = f x
+    writeArray arr idx x'
+    return r
 
 ----------------------------------------------------------------
 
