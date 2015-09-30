@@ -11,7 +11,7 @@ module PriorityQueue where
 import Data.Array (Array, listArray, (!))
 import Data.Array.IO (IOArray, newArray, readArray, writeArray)
 import Data.Bits (setBit, clearBit, shiftR)
-import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef')
 import Data.Word (Word64)
 import Foreign.C.Types (CLLong(..))
 
@@ -102,10 +102,7 @@ enqueue Queue{..} ent = do
         return offidx
     push offidx ent' =
         updateArray anchors offidx $ \q -> ((), RTQ.enqueue ent' q)
-    updateBits idx = do
-        bits <- readIORef bitsRef
-        let !bits' = setBit bits idx
-        writeIORef bitsRef bits'
+    updateBits idx = modifyIORef' bitsRef $ \bits -> setBit bits idx
 
 -- | Dequeuing an entry. Queue is updated.
 dequeue :: Queue a -> IO (Entry a)
