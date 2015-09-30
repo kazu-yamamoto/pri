@@ -1,5 +1,6 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE BangPatterns #-}
 
 -- https://en.wikipedia.org/wiki/Find_first_set
 -- https://github.com/h2o/h2o/blob/master/lib/http2/scheduler.c
@@ -69,31 +70,33 @@ enqueue :: Entry a -> Queue a -> IO ()
 enqueue Entry{..} Queue{..} = do
     bits <- readIORef bitsRef
     offset <- readIORef offsetRef
-    let off' = offsetTable ! (weight - 1) + deficit
-        deficit' = off' `mod` deficitSteps
-        off      = off' `div` deficitSteps
-        ent = Entry weight deficit' item
-        n = bitWidth - 1 - off
-        bits' = setBit bits n
-        idx = (offset + off) `mod` bitWidth
+    let !off' = offsetTable ! (weight - 1) + deficit
+        !deficit' = off' `mod` deficitSteps
+        !off      = off' `div` deficitSteps
+        !ent = Entry weight deficit' item
+        !n = bitWidth - 1 - off
+        !bits' = setBit bits n
+        !idx = (offset + off) `mod` bitWidth
     writeIORef bitsRef bits'
     q <- readArray anchors idx
-    writeArray anchors idx $ ent <| q
+    let q' = ent <| q
+    writeArray anchors idx q'
 
 dequeue :: Queue a -> IO (Entry a)
 dequeue Queue{..} = do
     bits <- readIORef bitsRef
     offset <- readIORef offsetRef
-    let zeroes = countLeadingZero64 bits
-        bits' = shiftL bits zeroes
+    let !zeroes = countLeadingZero64 bits
+        !bits' = shiftL bits zeroes
     writeIORef bitsRef bits'
-    let off = (offset + zeroes) `mod` bitWidth
+    let !off = (offset + zeroes) `mod` bitWidth
     writeIORef offsetRef off
     q <- readArray anchors off
     let q' :> ent = S.viewr q
     writeArray anchors off q'
-    when (S.null q') $
-        writeIORef bitsRef $ clearBit bits' (bitWidth - 1)
+    when (S.null q') $ do
+        let !bits'' = clearBit bits' (bitWidth - 1)
+        writeIORef bitsRef bits''
     return ent
 
 ----------------------------------------------------------------
@@ -107,8 +110,8 @@ main = do
     go 1000 q
 
 go :: Int -> Queue String -> IO ()
-go 0 _ = return ()
-go n q = do
+go  0 _ = return ()
+go !n q = do
     x <- dequeue q
     print x
     enqueue x q
