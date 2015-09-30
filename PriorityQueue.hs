@@ -38,6 +38,9 @@ data Queue a = Queue {
 bitWidth :: Int
 bitWidth = 64
 
+relativeIndex :: Int -> Int -> Int
+relativeIndex offset idx = (offset + idx) `mod` bitWidth
+
 ----------------------------------------------------------------
 
 deficitSteps :: Int
@@ -82,31 +85,34 @@ enqueue Queue{..} ent = do
     offset <- readIORef offsetRef
     let !total = deficitTable ! weight ent + deficit ent
         !deficit' = total `mod` deficitSteps
-        !off      = total `div` deficitSteps
-        !n = bitWidth - 1 - off
+        !idx      = total `div` deficitSteps
+        !n = bitWidth - 1 - idx
         !bits' = setBit bits n
     writeIORef bitsRef bits'
-    let !idx = (offset + off) `mod` bitWidth
+    let !offidx = relativeIndex offset idx
         !ent' = ent { deficit = deficit' }
-    q <- RTQ.enqueue ent' <$> readArray anchors idx
-    writeArray anchors idx q
+    q <- RTQ.enqueue ent' <$> readArray anchors offidx
+    writeArray anchors offidx q
 
 -- | Dequeuing an entry. Queue is updated.
 dequeue :: Queue a -> IO (Entry a)
 dequeue Queue{..} = do
     bits <- readIORef bitsRef
     offset <- readIORef offsetRef
-    let !zeroes = countLeadingZero64 bits
-        !bits' = shiftL bits zeroes
-        !off = (offset + zeroes) `mod` bitWidth
-    (ent,q) <- RTQ.dequeue <$> readArray anchors off
+    let !idx = countLeadingZero64 bits
+        !offidx = relativeIndex offset idx
+    (ent,q) <- RTQ.dequeue <$> readArray anchors offidx
+    --
+    let !offset' = offidx
+        !bits' = shiftL bits idx
+    writeIORef offsetRef offset'
     if RTQ.null q then do
         let !bits'' = clearBit bits' (bitWidth - 1)
         writeIORef bitsRef bits''
       else
         writeIORef bitsRef bits'
-    writeIORef offsetRef off
-    writeArray anchors off q
+    --
+    writeArray anchors offidx q
     return ent
 
 ----------------------------------------------------------------
