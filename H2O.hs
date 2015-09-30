@@ -58,6 +58,14 @@ offsetTable = listArray (0,256) offsetList
 foreign import ccall unsafe "strings.h flsll"
     c_fls :: CLLong -> CLLong
 
+-- | Counting leading zeros for 64bit words. O(1)
+--
+-- >>> countLeadingZero64 $ setBit 0 63
+-- 0
+-- >>> countLeadingZero64 $ setBit 0 62
+-- 1
+-- >>> countLeadingZero64 $ setBit 0 0
+-- 63
 countLeadingZero64 :: Word64 -> Int
 countLeadingZero64 x = bitWidth - fromIntegral (c_fls (fromIntegral x))
 
