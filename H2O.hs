@@ -6,13 +6,13 @@
 
 module H2O where
 
-import Data.Word
 import Control.Monad
 import Data.Array
 import Data.Array.IO
 import Data.Bits
 import Data.IORef
 import Data.Sequence as S
+import Data.Word
 import Foreign.C.Types
 
 foreign import ccall unsafe "strings.h flsll"
