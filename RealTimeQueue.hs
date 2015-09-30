@@ -2,6 +2,7 @@
 
 module RealTimeQueue (
     empty
+  , RealTimeQueue.null
   , enqueue
   , dequeue
   ) where
@@ -36,6 +37,10 @@ exec (RQ f r (Lazy  []))   = RQ f' (Strict []) f'
     f' = rotate f r (Lazy []) -- fixme
 
 ----------------------------------------------------------------
+
+null :: RQ a -> Bool
+null (RQ (Lazy []) (Strict []) (Lazy [])) = True
+null _                                    = False
 
 empty :: RQ a
 empty = RQ (Lazy []) (Strict []) (Lazy [])
