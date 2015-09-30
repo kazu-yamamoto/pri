@@ -6,17 +6,19 @@
 
 module H2O where
 
-import Data.Bits
+import Data.Word
+import Control.Monad
 import Data.Array
 import Data.Array.IO
+import Data.Bits
 import Data.IORef
-import Data.Sequence
+import Data.Sequence as S
 import Foreign.C.Types
 
 foreign import ccall unsafe "strings.h flsll"
     c_fls :: CLong -> CLong
 
-findFirstBitSet :: Int -> Int
+findFirstBitSet :: Word64 -> Int
 findFirstBitSet = fromIntegral . c_fls . fromIntegral
 
 type Weight = Int
@@ -28,7 +30,7 @@ data Entry a = Entry {
   } deriving Show
 
 data Queue a = Queue {
-    bitsRef   :: IORef Int
+    bitsRef   :: IORef Word64
   , offsetRef :: IORef Int
   , anchors   :: IOArray Int (Seq (Entry a))
   }
@@ -57,7 +59,6 @@ enqueue Entry{..} Queue{..} = do
         n = 8 * 8 - 1 - off
         bits' = setBit bits n
         idx = (offset + off) `div` 64
-    print (weight,off',off,idx,deficit',n,bits')
     writeIORef bitsRef bits'
     q <- readArray anchors idx
     writeArray anchors idx $ ent <| q
@@ -70,13 +71,15 @@ dequeue Queue{..} = do
         bits' = shiftL bits zeroes
     writeIORef bitsRef bits'
     let off = (offset + zeroes) `mod` 64
-    print (zeroes,off)
     writeIORef offsetRef off
     q <- readArray anchors off
     let q' :> ent = viewr q
     writeArray anchors off q'
+    when (S.null q') $ do
+        writeIORef bitsRef $ clearBit bits' 63
     return ent
 
+go :: IO ()
 go = do
     q <- new :: IO (Queue String)
     enqueue (Entry 201 0 "a") q
