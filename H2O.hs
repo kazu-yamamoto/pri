@@ -74,6 +74,7 @@ countLeadingZero64 x = bitWidth - fromIntegral (c_fls (fromIntegral x))
 new :: IO (Queue a)
 new = Queue <$> newIORef 0 <*> newIORef 0 <*> newArray (0, bitWidth - 1) S.empty
 
+-- | Enqueuing an entry. Queue is updated.
 enqueue :: Queue a -> Entry a -> IO ()
 enqueue Queue{..} Entry{..} = do
     bits <- readIORef bitsRef
@@ -90,6 +91,7 @@ enqueue Queue{..} Entry{..} = do
     let q' = ent <| q
     writeArray anchors idx q'
 
+-- | Dequeuing an entry. Queue is updated.
 dequeue :: Queue a -> IO (Entry a)
 dequeue Queue{..} = do
     bits <- readIORef bitsRef
