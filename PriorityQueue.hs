@@ -11,10 +11,11 @@ import Data.Array (Array, listArray, (!))
 import Data.Array.IO (IOArray, newArray, readArray, writeArray)
 import Data.Bits (setBit, clearBit, shiftL)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
-import Data.Sequence (Seq, (<|), ViewR(..))
-import qualified Data.Sequence as S
 import Data.Word (Word64)
 import Foreign.C.Types (CLLong(..))
+
+import RealTimeQueue (RealTimeQueue)
+import qualified RealTimeQueue as RTQ
 
 ----------------------------------------------------------------
 
@@ -29,7 +30,7 @@ data Entry a = Entry {
 data Queue a = Queue {
     bitsRef   :: IORef Word64
   , offsetRef :: IORef Int
-  , anchors   :: IOArray Int (Seq (Entry a))
+  , anchors   :: IOArray Int (RealTimeQueue (Entry a))
   }
 
 ----------------------------------------------------------------
@@ -72,7 +73,7 @@ countLeadingZero64 x = bitWidth - fromIntegral (c_fls (fromIntegral x))
 ----------------------------------------------------------------
 
 new :: IO (Queue a)
-new = Queue <$> newIORef 0 <*> newIORef 0 <*> newArray (0, bitWidth - 1) S.empty
+new = Queue <$> newIORef 0 <*> newIORef 0 <*> newArray (0, bitWidth - 1) RTQ.empty
 
 -- | Enqueuing an entry. Queue is updated.
 enqueue :: Queue a -> Entry a -> IO ()
@@ -87,7 +88,7 @@ enqueue Queue{..} Entry{..} = do
     writeIORef bitsRef bits'
     let !idx = (offset + off) `mod` bitWidth
         !ent = Entry weight deficit' item
-    q <- (ent <|) <$> readArray anchors idx
+    q <- RTQ.enqueue ent <$> readArray anchors idx
     writeArray anchors idx q
 
 -- | Dequeuing an entry. Queue is updated.
@@ -98,8 +99,8 @@ dequeue Queue{..} = do
     let !zeroes = countLeadingZero64 bits
         !bits' = shiftL bits zeroes
         !off = (offset + zeroes) `mod` bitWidth
-    q :> ent <- S.viewr <$> readArray anchors off
-    if S.null q then do
+    (ent,q) <- RTQ.dequeue <$> readArray anchors off
+    if RTQ.null q then do
         let !bits'' = clearBit bits' (bitWidth - 1)
         writeIORef bitsRef bits''
       else
