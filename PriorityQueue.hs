@@ -40,7 +40,7 @@ bitWidth :: Int
 bitWidth = 64
 
 relativeIndex :: Int -> Int -> Int
-relativeIndex offset idx = (offset + idx) `mod` bitWidth
+relativeIndex idx offset = (offset + idx) `mod` bitWidth
 
 ----------------------------------------------------------------
 
@@ -98,7 +98,7 @@ enqueue Queue{..} ent = do
         !idx      = total `div` deficitSteps
     getOffIdx idx = do
         offset <- readIORef offsetRef
-        let !offidx = relativeIndex offset idx
+        let !offidx = relativeIndex idx offset
         return offidx
     push offidx ent' =
         updateArray anchors offidx $ \q -> ((), RTQ.enqueue ent' q)
@@ -107,21 +107,22 @@ enqueue Queue{..} ent = do
 -- | Dequeuing an entry. Queue is updated.
 dequeue :: Queue a -> IO (Entry a)
 dequeue Queue{..} = do
-    bits <- readIORef bitsRef
-    offset <- readIORef offsetRef
-    let !idx = firstBitSet bits
-        !offidx = relativeIndex offset idx
+    !idx <- getIdx
+    !offidx <- getOffIdx idx
     ent <- updateArray anchors offidx RTQ.dequeue
     updateOffset offidx
-    checkEmpty offidx >>= updateBits bits idx
+    checkEmpty offidx >>= updateBits idx
     return ent
   where
+    getIdx = firstBitSet <$> readIORef bitsRef
+    getOffIdx idx = relativeIndex idx <$> readIORef offsetRef
     checkEmpty offidx = RTQ.null <$> readArray anchors offidx
     updateOffset offset' = writeIORef offsetRef offset'
-    updateBits bits idx isEmpty = writeIORef bitsRef bits''
+    updateBits idx isEmpty = modifyIORef' bitsRef shiftClear
       where
-        !bits' = shiftR bits idx
-        !bits'' = if isEmpty then clearBit bits' 0 else bits'
+        shiftClear bits
+          | isEmpty   = clearBit (shiftR bits idx) 0
+          | otherwise = shiftR bits idx
 
 updateArray :: IOArray Int a -> Int -> (a -> (b,a)) -> IO b
 updateArray arr idx f = do
