@@ -66,8 +66,8 @@ countLeadingZero64 x = bitWidth - fromIntegral (c_fls (fromIntegral x))
 new :: IO (Queue a)
 new = Queue <$> newIORef 0 <*> newIORef 0 <*> newArray (0, bitWidth - 1) S.empty
 
-enqueue :: Entry a -> Queue a -> IO ()
-enqueue Entry{..} Queue{..} = do
+enqueue :: Queue a -> Entry a -> IO ()
+enqueue Queue{..} Entry{..} = do
     bits <- readIORef bitsRef
     offset <- readIORef offsetRef
     let !off' = offsetTable ! (weight - 1) + deficit
@@ -104,9 +104,9 @@ dequeue Queue{..} = do
 main :: IO ()
 main = do
     q <- new :: IO (Queue String)
-    enqueue (Entry 201 0 "a") q
-    enqueue (Entry 101 0 "b") q
-    enqueue (Entry 1 0 "c") q
+    enqueue q (Entry 201 0 "a")
+    enqueue q (Entry 101 0 "b")
+    enqueue q (Entry   1 0 "c")
     go 1000 q
 
 go :: Int -> Queue String -> IO ()
@@ -114,5 +114,5 @@ go  0 _ = return ()
 go !n q = do
     x <- dequeue q
     print x
-    enqueue x q
+    enqueue q x
     go (n - 1) q
