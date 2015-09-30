@@ -5,7 +5,7 @@
 -- Haskell implementation of H2O's priority queue.
 -- https://github.com/h2o/h2o/blob/master/lib/http2/scheduler.c
 
-module H2O where
+module PriorityQueue where
 
 import Data.Array (Array, listArray, (!))
 import Data.Array.IO (IOArray, newArray, readArray, writeArray)
