@@ -9,7 +9,7 @@ module PriorityQueue where
 
 import Data.Array (Array, listArray, (!))
 import Data.Array.IO (IOArray, newArray, readArray, writeArray)
-import Data.Bits (setBit, clearBit, shiftL)
+import Data.Bits (setBit, clearBit, shiftR)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.Word (Word64)
 import Foreign.C.Types (CLLong(..))
@@ -59,19 +59,23 @@ deficitTable = listArray (1,256) deficitList
 ----------------------------------------------------------------
 
 -- https://en.wikipedia.org/wiki/Find_first_set
-foreign import ccall unsafe "strings.h flsll"
-    c_fls :: CLLong -> CLLong
+foreign import ccall unsafe "strings.h ffsll"
+    c_ffs :: CLLong -> CLLong
 
--- | Counting leading zeros for 64bit words. O(1)
+-- | Finding first bit set. O(1)
 --
--- >>> countLeadingZero64 $ setBit 0 63
--- 0
--- >>> countLeadingZero64 $ setBit 0 62
--- 1
--- >>> countLeadingZero64 $ setBit 0 0
+-- >>> firstBitSet $ setBit 0 63
 -- 63
-countLeadingZero64 :: Word64 -> Int
-countLeadingZero64 x = bitWidth - fromIntegral (c_fls (fromIntegral x))
+-- >>> firstBitSet $ setBit 0 62
+-- 62
+-- >>> firstBitSet $ setBit 0 1
+-- 1
+-- >>> firstBitSet $ setBit 0 0
+-- 0
+firstBitSet :: Word64 -> Int
+firstBitSet x = ffs x - 1
+  where
+    ffs = fromIntegral . c_ffs . fromIntegral
 
 ----------------------------------------------------------------
 
@@ -86,8 +90,7 @@ enqueue Queue{..} ent = do
     let !total = deficitTable ! weight ent + deficit ent
         !deficit' = total `mod` deficitSteps
         !idx      = total `div` deficitSteps
-        !n = bitWidth - 1 - idx
-        !bits' = setBit bits n
+        !bits' = setBit bits idx
     writeIORef bitsRef bits'
     let !offidx = relativeIndex offset idx
         !ent' = ent { deficit = deficit' }
@@ -99,20 +102,20 @@ dequeue :: Queue a -> IO (Entry a)
 dequeue Queue{..} = do
     bits <- readIORef bitsRef
     offset <- readIORef offsetRef
-    let !idx = countLeadingZero64 bits
+    let !idx = firstBitSet bits
         !offidx = relativeIndex offset idx
     (ent,q) <- RTQ.dequeue <$> readArray anchors offidx
+    writeArray anchors offidx q
     --
     let !offset' = offidx
-        !bits' = shiftL bits idx
+        !bits' = shiftR bits idx
     writeIORef offsetRef offset'
     if RTQ.null q then do
-        let !bits'' = clearBit bits' (bitWidth - 1)
+        let !bits'' = clearBit bits' 0
         writeIORef bitsRef bits''
       else
         writeIORef bitsRef bits'
     --
-    writeArray anchors offidx q
     return ent
 
 ----------------------------------------------------------------
