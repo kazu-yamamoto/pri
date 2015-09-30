@@ -1,7 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
 
 module RealTimeQueue (
-    empty
+    RealTimeQueue
+  , empty
   , RealTimeQueue.null
   , enqueue
   , dequeue
@@ -12,7 +13,7 @@ module RealTimeQueue (
 newtype LazyList a = Lazy [a]
 newtype StrictList a = Strict [a]
 
-data RQ a = RQ  (LazyList a)    -- front
+data RealTimeQueue a = RealTimeQueue  (LazyList a)    -- front
                !(StrictList a)  -- rear
                 (LazyList a)    -- pointer copy to front
 
@@ -30,28 +31,28 @@ rotate (Lazy (x:xs)) (Strict (y:ys)) (Lazy zs) = Lazy (x:rs)
     Lazy rs = rotate (Lazy xs) (Strict ys) (Lazy (y:zs)) -- reverse
 rotate _ _ _ = error "rotate"
 
-exec :: RQ a -> RQ a
-exec (RQ f r (Lazy (_:x))) = RQ f r (Lazy x)      -- forcing
-exec (RQ f r (Lazy  []))   = RQ f' (Strict []) f'
+exec :: RealTimeQueue a -> RealTimeQueue a
+exec (RealTimeQueue f r (Lazy (_:x))) = RealTimeQueue f r (Lazy x) -- forcing
+exec (RealTimeQueue f r (Lazy  []))   = RealTimeQueue f' (Strict []) f'
   where
     f' = rotate f r (Lazy []) -- fixme
 
 ----------------------------------------------------------------
 
-null :: RQ a -> Bool
-null (RQ (Lazy []) (Strict []) (Lazy [])) = True
-null _                                    = False
+null :: RealTimeQueue a -> Bool
+null (RealTimeQueue (Lazy []) (Strict []) (Lazy [])) = True
+null _                                               = False
 
-empty :: RQ a
-empty = RQ (Lazy []) (Strict []) (Lazy [])
+empty :: RealTimeQueue a
+empty = RealTimeQueue (Lazy []) (Strict []) (Lazy [])
 
-enqueue :: a -> RQ a -> RQ a
-enqueue x (RQ f r s) = let !z = exec (RQ f r' s) in z
+enqueue :: a -> RealTimeQueue a -> RealTimeQueue a
+enqueue x (RealTimeQueue f r s) = let !z = exec (RealTimeQueue f r' s) in z
   where
     r' = conS x r -- fixme
 
-dequeue :: RQ a -> (a, RQ a)
-dequeue (RQ (Lazy (x:f)) r s) = (x,q)
+dequeue :: RealTimeQueue a -> (a, RealTimeQueue a)
+dequeue (RealTimeQueue (Lazy (x:f)) r s) = (x,q)
   where
-    !q = exec (RQ (Lazy f) r s)
-dequeue _                     = error "dequeue"
+    !q = exec (RealTimeQueue (Lazy f) r s)
+dequeue _                                = error "dequeue"
