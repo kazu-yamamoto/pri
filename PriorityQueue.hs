@@ -86,15 +86,22 @@ new = Queue <$> newIORef 0 <*> newIORef 0 <*> newArray (0, bitWidth - 1) RTQ.emp
 -- | Enqueuing an entry. Queue is updated.
 enqueue :: Queue a -> Entry a -> IO ()
 enqueue Queue{..} ent = do
-    offset <- readIORef offsetRef
-    let !total = deficitTable ! weight ent + deficit ent
-        !deficit' = total `mod` deficitSteps
-        !idx      = total `div` deficitSteps
-        !offidx = relativeIndex offset idx
-        !ent' = ent { deficit = deficit' }
-    updateArray anchors offidx $ \q -> ((), RTQ.enqueue ent' q)
+    let (idx,deficit') = calcIdxAndDeficit
+    offidx <- getOffIdx idx
+    push offidx ent { deficit = deficit' }
     updateBits idx
   where
+    calcIdxAndDeficit = (idx,deficit')
+      where
+        !total = deficitTable ! weight ent + deficit ent
+        !deficit' = total `mod` deficitSteps
+        !idx      = total `div` deficitSteps
+    getOffIdx idx = do
+        offset <- readIORef offsetRef
+        let !offidx = relativeIndex offset idx
+        return offidx
+    push offidx ent' =
+        updateArray anchors offidx $ \q -> ((), RTQ.enqueue ent' q)
     updateBits idx = do
         bits <- readIORef bitsRef
         let !bits' = setBit bits idx
