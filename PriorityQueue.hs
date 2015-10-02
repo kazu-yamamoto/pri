@@ -101,8 +101,8 @@ enqueue Queue{..} ent = do
         offset <- readTVar offsetRef
         let !offidx = relativeIndex idx offset
         return offidx
-    push offidx ent' = readArray anchors offidx >>=  \q -> writeTQueue q ent'
-    updateBits idx = modifyTVar' bitsRef $ \bits -> setBit bits idx
+    push offidx ent' = readArray anchors offidx >>= flip writeTQueue ent'
+    updateBits idx = modifyTVar' bitsRef $ flip setBit idx
 
 -- | Dequeuing an entry. Queue is updated.
 dequeue :: Queue a -> STM (Entry a)
