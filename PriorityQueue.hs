@@ -53,7 +53,7 @@ deficitList = map calc idxs
   where
     idxs :: [Double]
     idxs = [1..256]
-    calc x = round (2**(8 - logBase 2 x) * 16128)
+    calc w = round (65536 * 63 / w)
 
 deficitTable :: Array Int Int
 deficitTable = listArray (1,256) deficitList
