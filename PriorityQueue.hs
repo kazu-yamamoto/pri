@@ -79,9 +79,7 @@ firstBitSet x = ffs x - 1
 ----------------------------------------------------------------
 
 new :: STM (Queue a)
-new = Queue <$> newTVar 0
-            <*> newTVar 0
-            <*> newAnchors
+new = Queue <$> newTVar 0 <*> newTVar 0 <*> newAnchors
   where
     newAnchors = replicateM bitWidth newTQueue
                  >>= newListArray (0, bitWidth - 1)
@@ -111,13 +109,14 @@ dequeue :: Queue a -> STM (Entry a)
 dequeue Queue{..} = do
     !idx <- getIdx
     !offidx <- getOffIdx idx
-    ent <- readArray anchors offidx >>= readTQueue
+    ent <- pop offidx
     updateOffset offidx
     checkEmpty offidx >>= updateBits idx
     return ent
   where
     getIdx = firstBitSet <$> readTVar bitsRef
     getOffIdx idx = relativeIndex idx <$> readTVar offsetRef
+    pop offidx = readArray anchors offidx >>= readTQueue
     checkEmpty offidx = readArray anchors offidx >>= isEmptyTQueue
     updateOffset offset' = writeTVar offsetRef offset'
     updateBits idx isEmpty = modifyTVar' bitsRef shiftClear
