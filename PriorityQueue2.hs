@@ -47,19 +47,21 @@ weightToPriority w = priorityTable ! w
 newEntry :: a -> Weight -> Ent a
 newEntry x w = Ent x w magicPriority
 
+isNewEntry :: Ent a -> Bool
+isNewEntry (Ent _ _ p) = p == magicPriority
+
 ----------------------------------------------------------------
 
 newQ :: PriorityQueue a
 newQ = PriorityQueue 0 H.empty
 
 enqueue :: PriorityQueue (Ent a) -> Ent a -> PriorityQueue (Ent a)
-enqueue (PriorityQueue base heap) (Ent x w p) = PriorityQueue base heap'
+enqueue (PriorityQueue base heap) ent@(Ent x w p) = PriorityQueue base heap'
   where
-    !b | p == magicPriority = base -- new entry
-       | otherwise          = p    -- used entry
+    !b = if isNewEntry ent then base else p
     !p' = b + weightToPriority w
-    !ent = Ent x w p'
-    !heap' = H.insert ent heap
+    !ent' = Ent x w p'
+    !heap' = H.insert ent' heap
 
 dequeue :: PriorityQueue (Ent a) -> (Ent a, PriorityQueue (Ent a))
 dequeue (PriorityQueue _ heap) = (ent, PriorityQueue base' heap')
