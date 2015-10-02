@@ -87,20 +87,15 @@ new = Queue <$> newTVar 0 <*> newTVar 0 <*> newAnchors
 -- | Enqueuing an entry. Queue is updated.
 enqueue :: Queue a -> Entry a -> STM ()
 enqueue Queue{..} ent = do
-    let (idx,deficit') = calcIdxAndDeficit
-    offidx <- getOffIdx idx
+    let (!idx,!deficit') = calcIdxAndDeficit
+    !offidx <- getOffIdx idx
     push offidx ent { deficit = deficit' }
     updateBits idx
   where
-    calcIdxAndDeficit = (idx,deficit')
+    calcIdxAndDeficit = total `divMod` deficitSteps
       where
-        !total = deficitTable ! weight ent + deficit ent
-        !deficit' = total `mod` deficitSteps
-        !idx      = total `div` deficitSteps
-    getOffIdx idx = do
-        offset <- readTVar offsetRef
-        let !offidx = relativeIndex idx offset
-        return offidx
+        total = deficitTable ! weight ent + deficit ent
+    getOffIdx idx = relativeIndex idx <$> readTVar offsetRef
     push offidx ent' = readArray anchors offidx >>= flip writeTQueue ent'
     updateBits idx = modifyTVar' bitsRef $ flip setBit idx
 
@@ -109,7 +104,7 @@ dequeue :: Queue a -> STM (Entry a)
 dequeue Queue{..} = do
     !idx <- getIdx
     !offidx <- getOffIdx idx
-    ent <- pop offidx
+    !ent <- pop offidx
     updateOffset offidx
     checkEmpty offidx >>= updateBits idx
     return ent
