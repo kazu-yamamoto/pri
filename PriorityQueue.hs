@@ -21,10 +21,13 @@ import Foreign.C.Types (CLLong(..))
 type Weight = Int
 
 data Entry a = Entry {
-    weight :: Int
+    item :: a
+  , weight :: Weight
   , deficit :: Int
-  , item :: a
   } deriving Show
+
+newEntry :: a -> Weight -> Entry a
+newEntry x w = Entry x w 0
 
 data Queue a = Queue {
     bitsRef   :: TVar Word64
@@ -125,9 +128,9 @@ dequeue Queue{..} = do
 main :: IO ()
 main = do
     q <- atomically new :: IO (Queue String)
-    atomically $ enqueue q (Entry 201 0 "a")
-    atomically $ enqueue q (Entry 101 0 "b")
-    atomically $ enqueue q (Entry   1 0 "c")
+    atomically $ enqueue q $ newEntry "a" 201
+    atomically $ enqueue q $ newEntry "b" 101
+    atomically $ enqueue q $ newEntry "c" 1
     go 1000 q
 
 go :: Int -> Queue String -> IO ()
