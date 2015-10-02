@@ -17,7 +17,7 @@ instance Eq (Ent a) where
     Ent _ _ p1 == Ent _ _ p2 = p1 == p2
 
 instance Ord (Ent a) where
-    Ent _ _ p1 < Ent _ _ p2 = p1 < p2
+    Ent _ _ p1 <  Ent _ _ p2 = p1 <  p2
     Ent _ _ p1 <= Ent _ _ p2 = p1 <= p2
 
 data PriorityQueue a = PriorityQueue Int (Heap (Ent a))
