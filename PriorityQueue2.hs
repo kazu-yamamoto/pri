@@ -20,7 +20,7 @@ instance Ord (Ent a) where
     Ent _ _ p1 < Ent _ _ p2 = p1 < p2
     Ent _ _ p1 <= Ent _ _ p2 = p1 <= p2
 
-data PriorityQueue a = PriorityQueue Int (Heap a)
+data PriorityQueue a = PriorityQueue Int (Heap (Ent a))
 
 ----------------------------------------------------------------
 
@@ -55,7 +55,7 @@ isNewEntry (Ent _ _ p) = p == magicPriority
 newQ :: PriorityQueue a
 newQ = PriorityQueue 0 H.empty
 
-enqueue :: PriorityQueue (Ent a) -> Ent a -> PriorityQueue (Ent a)
+enqueue :: PriorityQueue a -> Ent a -> PriorityQueue a
 enqueue (PriorityQueue base heap) ent@(Ent x w p) = PriorityQueue base heap'
   where
     !b = if isNewEntry ent then base else p
@@ -63,7 +63,7 @@ enqueue (PriorityQueue base heap) ent@(Ent x w p) = PriorityQueue base heap'
     !ent' = Ent x w p'
     !heap' = H.insert ent' heap
 
-dequeue :: PriorityQueue (Ent a) -> (Ent a, PriorityQueue (Ent a))
+dequeue :: PriorityQueue a -> (Ent a, PriorityQueue a)
 dequeue (PriorityQueue _ heap) = (ent, PriorityQueue base' heap')
   where
     Just (ent@(Ent _ _ p), heap') = H.uncons heap
@@ -79,7 +79,7 @@ main = do
         q3 = enqueue q2 (newEntry "c"   1)
     go 1000 q3
 
-go :: Int -> PriorityQueue (Ent String) -> IO ()
+go :: Int -> PriorityQueue String -> IO ()
 go  0 _ = return ()
 go !n q = do
     let (x,q') = dequeue q
