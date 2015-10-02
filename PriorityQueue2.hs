@@ -11,9 +11,12 @@ import qualified Data.Heap as H
 type Weight = Int
 type Priority = Int
 
-data Ent a = Ent a Weight Priority deriving (Eq,Show)
+data Ent a = Ent a Weight Priority deriving Show
 
-instance Eq a => Ord (Ent a) where
+instance Eq (Ent a) where
+    Ent _ _ p1 == Ent _ _ p2 = p1 == p2
+
+instance Ord (Ent a) where
     Ent _ _ p1 < Ent _ _ p2 = p1 < p2
     Ent _ _ p1 <= Ent _ _ p2 = p1 <= p2
 
@@ -25,7 +28,7 @@ magicPriority :: Priority
 magicPriority = 0
 
 prioritySteps :: Int
-prioritySteps = 65536 * 63
+prioritySteps = 65536
 
 priorityList :: [Int]
 priorityList = map calc idxs
@@ -49,7 +52,7 @@ newEntry x w = Ent x w magicPriority
 newQ :: PriorityQueue a
 newQ = PriorityQueue 0 H.empty
 
-enqueue :: Eq a => PriorityQueue (Ent a) -> Ent a -> PriorityQueue (Ent a)
+enqueue :: PriorityQueue (Ent a) -> Ent a -> PriorityQueue (Ent a)
 enqueue (PriorityQueue base heap) (Ent x w p) = PriorityQueue base heap'
   where
     !b | p == magicPriority = base -- new entry
@@ -58,7 +61,7 @@ enqueue (PriorityQueue base heap) (Ent x w p) = PriorityQueue base heap'
     !ent = Ent x w p'
     !heap' = H.insert ent heap
 
-dequeue :: Eq a => PriorityQueue (Ent a) -> (Ent a, PriorityQueue (Ent a))
+dequeue :: PriorityQueue (Ent a) -> (Ent a, PriorityQueue (Ent a))
 dequeue (PriorityQueue _ heap) = (ent, PriorityQueue base' heap')
   where
     Just (ent@(Ent _ _ p), heap') = H.uncons heap
